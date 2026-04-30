@@ -4,7 +4,12 @@
       "WebSearch",
       "WebFetch(domain:bybit-exchange.github.io)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:www.bybit.com)"
+      "WebFetch(domain:www.bybit.com)",
+      "Bash(python3 -m py_compile config.py db/session.py db/models.py db/migrations/env.py db/migrations/versions/0001_initial_schema.py bot/main.py)",
+      "Bash(wsl python3 *)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(wsl bash *)"
     ]
   }
 }
