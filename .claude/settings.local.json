@@ -9,7 +9,8 @@
       "Bash(wsl python3 *)",
       "Bash(docker --version)",
       "Bash(docker compose *)",
-      "Bash(wsl bash *)"
+      "Bash(wsl bash *)",
+      "PowerShell(wsl -d ubuntu-24.04 -- bash -c \"which poetry; which docker; which python3; python3 --version\")"
     ]
   }
 }

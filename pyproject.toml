@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "p2p-monitor-bot"
+version = "0.1.0"
+description = "Telegram bot for monitoring Bybit P2P orders"
+authors = ["kiso"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+aiogram = "^3.15"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+asyncpg = "^0.30"
+alembic = "^1.14"
+redis = {extras = ["hiredis"], version = "^5.2"}
+httpx = "^0.28"
+pydantic-settings = "^2.7"
+python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8"
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+markers = ["integration: requires real Bybit API credentials"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
