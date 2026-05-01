@@ -2,6 +2,7 @@ import logging
 
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.keyboards.main_menu import main_menu_kb
@@ -33,8 +34,11 @@ async def handle_start(
     state_repo: RedisTrackingStateRepo,
     buffer: RedisOrderBuffer,
     view_messages: ViewMessages,
+    state: FSMContext,
 ) -> None:
     chat_id = message.chat.id
+    await state.clear()
+
     stopped = await stop_tracking(bot, chat_id, state_repo, buffer)
     if stopped:
         logger.info("Stopped active tracking for user %s on /start", user.telegram_id)

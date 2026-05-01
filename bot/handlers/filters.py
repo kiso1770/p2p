@@ -30,22 +30,20 @@ EMPTY_TEXT = (
 SUMMARY_TEXT = "📋 <b>Мои фильтры</b>"
 
 
-# ─── Show filters list ───────────────────────────────────────────────
+# ─── Reusable view renderer ──────────────────────────────────────────
 
 
-@router.callback_query(F.data == "menu:filters")
-async def show_filters(
-    callback: CallbackQuery,
+async def render_filters_view(
     bot: Bot,
+    chat_id: int,
     user: User,
     session: AsyncSession,
     view_messages: ViewMessages,
 ) -> None:
-    chat_id = callback.message.chat.id
+    """Render the filters list as the current view (deletes the previous one)."""
     await delete_current_view(bot, chat_id, view_messages)
 
-    repo = FilterRepo(session)
-    filters = await repo.get_all_by_user(user.id)
+    filters = await FilterRepo(session).get_all_by_user(user.id)
 
     new_ids: list[int] = []
     if not filters:
@@ -61,6 +59,20 @@ async def show_filters(
         new_ids.append(summary.message_id)
 
     await view_messages.set(chat_id, new_ids)
+
+
+# ─── Show filters list ───────────────────────────────────────────────
+
+
+@router.callback_query(F.data == "menu:filters")
+async def show_filters(
+    callback: CallbackQuery,
+    bot: Bot,
+    user: User,
+    session: AsyncSession,
+    view_messages: ViewMessages,
+) -> None:
+    await render_filters_view(bot, callback.message.chat.id, user, session, view_messages)
     await callback.answer()
 
 
@@ -150,17 +162,8 @@ async def cancel_delete(
     await callback.answer()
 
 
-# ─── Stubs for Phases 5b / 5c / 6 ────────────────────────────────────
-
-
-@router.callback_query(F.data == "filter:create")
-async def stub_create(callback: CallbackQuery) -> None:
-    await callback.answer("➕ Создание фильтра — в разработке (Фаза 5b)", show_alert=True)
-
-
-@router.callback_query(F.data.startswith("filter:edit:"))
-async def stub_edit(callback: CallbackQuery) -> None:
-    await callback.answer("✏️ Редактирование — в разработке (Фаза 5c)", show_alert=True)
+# ─── Stub for Phase 6 ────────────────────────────────────────────────
+# (filter:create handled by wizard, filter:edit handled by edit router)
 
 
 @router.callback_query(F.data.startswith("filter:start:"))

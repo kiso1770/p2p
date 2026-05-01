@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -14,15 +15,59 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import settings  # noqa: E402
 from services.bybit_models import BybitAd  # noqa: E402
 
+# Tests run against an isolated database in the same postgres container so
+# that real user data in `p2p_db` is never touched.
+TEST_DB_NAME = "p2p_test_db"
 TEST_DATABASE_URL = (
     f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}"
-    f"@localhost:{settings.postgres_port}/{settings.postgres_db}"
+    f"@localhost:{settings.postgres_port}/{TEST_DB_NAME}"
+)
+MAINTENANCE_URL = (
+    f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}"
+    f"@localhost:{settings.postgres_port}/postgres"
 )
 TEST_REDIS_URL = f"redis://localhost:{settings.redis_port}/15"
 
 TRUNCATE_SQL = text(
     "TRUNCATE TABLE description_blacklist, filters, users RESTART IDENTITY CASCADE"
 )
+
+
+async def _bootstrap_test_db() -> None:
+    """Create p2p_test_db if it doesn't exist and (re)build the schema.
+
+    Schema is created via SQLAlchemy `Base.metadata.create_all` — the
+    Postgres trigger from migration 0001 is not reproduced because no test
+    relies on it.
+    """
+    maint = create_async_engine(MAINTENANCE_URL, isolation_level="AUTOCOMMIT")
+    try:
+        async with maint.connect() as conn:
+            exists = (
+                await conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = :n"),
+                    {"n": TEST_DB_NAME},
+                )
+            ).scalar()
+            if exists is None:
+                await conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
+    finally:
+        await maint.dispose()
+
+    from db.models import Base
+
+    engine = create_async_engine(TEST_DATABASE_URL)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    asyncio.run(_bootstrap_test_db())
 
 
 def _ad(

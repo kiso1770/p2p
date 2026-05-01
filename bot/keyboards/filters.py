@@ -2,13 +2,8 @@ from decimal import Decimal
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from bot.currencies import currency_flag
 from db.models import Filter
-
-CURRENCY_FLAGS = {
-    "RUB": "🇷🇺", "USD": "🇺🇸", "EUR": "🇪🇺", "KZT": "🇰🇿",
-    "UAH": "🇺🇦", "GBP": "🇬🇧", "TRY": "🇹🇷", "AZN": "🇦🇿",
-    "UZS": "🇺🇿", "INR": "🇮🇳",
-}
 
 
 def filters_summary_kb() -> InlineKeyboardMarkup:
@@ -46,7 +41,10 @@ def delete_confirm_kb(filter_id: int) -> InlineKeyboardMarkup:
 def _fmt_decimal(value: Decimal | None, suffix: str = "") -> str:
     if value is None:
         return "—"
-    formatted = format(value.normalize(), "f").rstrip("0").rstrip(".")
+    formatted = format(value, "f")
+    # Strip trailing zeros only if there is a fractional part.
+    if "." in formatted:
+        formatted = formatted.rstrip("0").rstrip(".")
     return f"{formatted}{suffix}"
 
 
@@ -63,7 +61,7 @@ def _fmt_words(words: list[str] | None) -> str:
 
 
 def format_filter(flt: Filter) -> str:
-    flag = CURRENCY_FLAGS.get(flt.currency_id, "💱")
+    flag = currency_flag(flt.currency_id)
     side_text = "📈 Покупка" if flt.side == 0 else "📉 Продажа"
     sort_arrow = "↑" if flt.sort_direction == "ASC" else "↓"
     show_no_desc = "показывать" if flt.show_no_description else "скрывать"

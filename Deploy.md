@@ -127,6 +127,18 @@ poetry run python -m bot.main          # запуск бота
 - `POSTGRES_HOST=localhost`
 - `REDIS_HOST=localhost`
 
+## 7. Запуск тестов
+
+Тесты используют **отдельную БД `p2p_test_db`** в том же postgres-контейнере, чтобы dev-данные (`p2p_db`) никогда не затрагивались. БД и схема создаются автоматически на старте сессии pytest.
+
+```bash
+docker compose up -d postgres redis    # должны быть запущены
+poetry run pytest                      # все тесты
+poetry run pytest -m integration       # только integration-тесты (включая реальный вызов Bybit API)
+```
+
+Redis для тестов изолирован через DB=15 (флашится перед/после).
+
 ---
 
 ## Управление

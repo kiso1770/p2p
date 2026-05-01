@@ -5,10 +5,21 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from aiogram.types import Message
 
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import StorageKey
+from aiogram.fsm.storage.memory import MemoryStorage
+
 from bot.handlers.start import handle_start
 from bot.views import ViewMessages
 from services.tracking.buffer import RedisOrderBuffer
 from services.tracking.state import RedisTrackingStateRepo, TrackingState
+
+
+def _state_for(chat_id: int) -> FSMContext:
+    return FSMContext(
+        storage=MemoryStorage(),
+        key=StorageKey(bot_id=1, user_id=chat_id, chat_id=chat_id),
+    )
 
 pytestmark = pytest.mark.integration
 
@@ -47,6 +58,7 @@ async def test_start_for_new_user_sends_welcome(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        state=_state_for(99999),
     )
 
     msg.answer.assert_awaited_once()
@@ -68,6 +80,7 @@ async def test_start_for_returning_user_sends_welcome_back(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        state=_state_for(99999),
     )
 
     text = msg.answer.await_args.args[0]
@@ -88,6 +101,7 @@ async def test_start_includes_main_menu_keyboard(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        state=_state_for(99999),
     )
 
     kwargs = msg.answer.await_args.kwargs
@@ -124,6 +138,7 @@ async def test_start_stops_active_tracking(redis_client, sample_ads):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        state=_state_for(99999),
     )
 
     # Tracking state must be cleared

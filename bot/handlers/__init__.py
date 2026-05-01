@@ -1,11 +1,13 @@
 from aiogram import Router
 
-from bot.handlers import filters, start
+from bot.handlers import edit, filters, start, wizard
 
 
 def build_root_router() -> Router:
     root = Router(name="root")
     root.include_router(start.router)
+    root.include_router(wizard.router)
+    root.include_router(edit.router)
     root.include_router(filters.router)
     return root
 
