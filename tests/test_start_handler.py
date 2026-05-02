@@ -12,6 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from bot.handlers.start import handle_start
 from bot.views import ViewMessages
 from services.tracking.buffer import RedisOrderBuffer
+from services.tracking.registry import EngineRegistry
 from services.tracking.state import RedisTrackingStateRepo, TrackingState
 
 
@@ -58,6 +59,7 @@ async def test_start_for_new_user_sends_welcome(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        engine_registry=EngineRegistry(),
         state=_state_for(99999),
     )
 
@@ -80,6 +82,7 @@ async def test_start_for_returning_user_sends_welcome_back(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        engine_registry=EngineRegistry(),
         state=_state_for(99999),
     )
 
@@ -101,6 +104,7 @@ async def test_start_includes_main_menu_keyboard(redis_client):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        engine_registry=EngineRegistry(),
         state=_state_for(99999),
     )
 
@@ -138,6 +142,7 @@ async def test_start_stops_active_tracking(redis_client, sample_ads):
         state_repo=state_repo,
         buffer=buffer,
         view_messages=view_messages,
+        engine_registry=EngineRegistry(),
         state=_state_for(99999),
     )
 

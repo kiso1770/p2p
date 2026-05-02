@@ -152,6 +152,7 @@ def make_filter(**overrides) -> SimpleNamespace:
         blacklist_words=None,
         sort_direction="ASC",
         orders_count=5,
+        refresh_interval_seconds=15,
     )
     defaults.update(overrides)
     return SimpleNamespace(**defaults)

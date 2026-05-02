@@ -79,5 +79,6 @@ def format_filter(flt: Filter) -> str:
         f"🚫 Blacklist: {_fmt_words(flt.blacklist_words)}",
         f"🔃 Сортировка: по курсу {sort_arrow}",
         f"🔢 Выводить: {flt.orders_count}",
+        f"🔄 Интервал: {flt.refresh_interval_seconds} сек",
     ]
     return "\n".join(lines)

@@ -162,10 +162,6 @@ async def cancel_delete(
     await callback.answer()
 
 
-# ─── Stub for Phase 6 ────────────────────────────────────────────────
-# (filter:create handled by wizard, filter:edit handled by edit router)
-
-
-@router.callback_query(F.data.startswith("filter:start:"))
-async def stub_start(callback: CallbackQuery) -> None:
-    await callback.answer("▶️ Отслеживание — в разработке (Фаза 6)", show_alert=True)
+# filter:create  → wizard router
+# filter:edit:{id} → edit router
+# filter:start:{id} → tracking router

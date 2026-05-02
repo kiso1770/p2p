@@ -22,6 +22,7 @@ def _flt(**overrides):
         blacklist_words=None,
         sort_direction="ASC",
         orders_count=5,
+        refresh_interval_seconds=15,
     )
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -68,6 +69,16 @@ def test_min_trades_count_integer():
 def test_orders_count_displayed():
     text = format_filter(_flt(orders_count=3))
     assert "Выводить: 3" in text
+
+
+def test_refresh_interval_default():
+    text = format_filter(_flt())
+    assert "Интервал: 15 сек" in text
+
+
+def test_refresh_interval_custom():
+    text = format_filter(_flt(refresh_interval_seconds=60))
+    assert "Интервал: 60 сек" in text
 
 
 def test_whitelist_and_blacklist_render():

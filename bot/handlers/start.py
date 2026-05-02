@@ -10,6 +10,7 @@ from bot.views import ViewMessages, delete_current_view
 from db.models import User
 from services.tracking.buffer import RedisOrderBuffer
 from services.tracking.lifecycle import stop_tracking
+from services.tracking.registry import EngineRegistry
 from services.tracking.state import RedisTrackingStateRepo
 
 logger = logging.getLogger(__name__)
@@ -34,12 +35,15 @@ async def handle_start(
     state_repo: RedisTrackingStateRepo,
     buffer: RedisOrderBuffer,
     view_messages: ViewMessages,
+    engine_registry: EngineRegistry,
     state: FSMContext,
 ) -> None:
     chat_id = message.chat.id
     await state.clear()
 
-    stopped = await stop_tracking(bot, chat_id, state_repo, buffer)
+    stopped = await stop_tracking(
+        bot, chat_id, state_repo, buffer, engine_registry=engine_registry
+    )
     if stopped:
         logger.info("Stopped active tracking for user %s on /start", user.telegram_id)
 

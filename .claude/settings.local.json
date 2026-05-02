@@ -10,7 +10,8 @@
       "Bash(docker --version)",
       "Bash(docker compose *)",
       "Bash(wsl bash *)",
-      "PowerShell(wsl -d ubuntu-24.04 -- bash -c \"which poetry; which docker; which python3; python3 --version\")"
+      "PowerShell(wsl -d ubuntu-24.04 -- bash -c \"which poetry; which docker; which python3; python3 --version\")",
+      "PowerShell(wsl -d ubuntu-24.04 -- bash -c \"for url in 'https://www.bybit.com/p2p-trade/?advNo=1887035540235796480' 'https://www.bybit.com/en-US/p2p?adNo=1887035540235796480' 'https://www.bybit.com/p2p/buy/USDT/RUB?orderNo=1887035540235796480' 'https://www.bybit.com/p2p/buy/USDT/RUB?itemId=1887035540235796480'; do echo '---' \\\\$url; curl -sLi \\\\\"\\\\$url\\\\\" 2>&1 | head -1; done\")"
     ]
   }
 }

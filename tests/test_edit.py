@@ -362,3 +362,51 @@ async def test_orders_count_out_of_range(db_session, redis_client):
 
     refreshed = await FilterRepo(db_session).get_by_id(flt.id, user.id)
     assert refreshed.orders_count == 5  # default unchanged
+
+
+async def test_refresh_interval_valid(db_session, redis_client):
+    from bot.handlers.edit import receive_interval
+
+    user, flt, vm, state = await _setup(db_session, redis_client)
+    bot = _fake_bot()
+    await state.set_state(EditFilter.refresh_interval)
+    await state.update_data(filter_id=flt.id, msg_id=999)
+
+    await receive_interval(_fake_message("60", chat_id=user.telegram_id),
+                           bot, user, db_session, state)
+    await db_session.commit()
+
+    refreshed = await FilterRepo(db_session).get_by_id(flt.id, user.id)
+    assert refreshed.refresh_interval_seconds == 60
+    assert await state.get_state() == EditFilter.sort.state
+
+
+async def test_refresh_interval_out_of_range(db_session, redis_client):
+    from bot.handlers.edit import receive_interval
+
+    user, flt, vm, state = await _setup(db_session, redis_client)
+    bot = _fake_bot()
+    await state.set_state(EditFilter.refresh_interval)
+    await state.update_data(filter_id=flt.id, msg_id=999)
+
+    await receive_interval(_fake_message("3", chat_id=user.telegram_id),
+                           bot, user, db_session, state)
+
+    refreshed = await FilterRepo(db_session).get_by_id(flt.id, user.id)
+    assert refreshed.refresh_interval_seconds == 15  # default unchanged
+    assert await state.get_state() == EditFilter.refresh_interval.state
+
+
+async def test_refresh_interval_too_high(db_session, redis_client):
+    from bot.handlers.edit import receive_interval
+
+    user, flt, vm, state = await _setup(db_session, redis_client)
+    bot = _fake_bot()
+    await state.set_state(EditFilter.refresh_interval)
+    await state.update_data(filter_id=flt.id, msg_id=999)
+
+    await receive_interval(_fake_message("700", chat_id=user.telegram_id),
+                           bot, user, db_session, state)
+
+    refreshed = await FilterRepo(db_session).get_by_id(flt.id, user.id)
+    assert refreshed.refresh_interval_seconds == 15

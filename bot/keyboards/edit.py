@@ -60,6 +60,7 @@ def sort_kb(sort_direction: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text=asc_text, callback_data="edit:sort:ASC")],
             [InlineKeyboardButton(text=desc_text, callback_data="edit:sort:DESC")],
             [InlineKeyboardButton(text="✏️ Изменить количество (1–5)", callback_data="edit:input:count")],
+            [InlineKeyboardButton(text="✏️ Интервал обновления (5–600с)", callback_data="edit:input:interval")],
             [InlineKeyboardButton(text="← Назад", callback_data="edit:back")],
         ]
     )

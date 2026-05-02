@@ -21,3 +21,4 @@ class EditFilter(StatesGroup):
     blacklist = State()
     sort = State()              # sort sub-screen
     orders_count = State()
+    refresh_interval = State()

@@ -599,9 +599,10 @@ async def receive_blacklist(message, bot, user, session, state):
 def _build_sort_screen(flt: Filter) -> str:
     arrow = "↑" if flt.sort_direction == "ASC" else "↓"
     return (
-        "🔃 <b>Сортировка и количество</b>\n\n"
+        "🔃 <b>Сортировка / количество / интервал</b>\n\n"
         f"Сортировка: <b>по курсу {arrow}</b>\n"
-        f"Выводить: <b>{flt.orders_count}</b>"
+        f"Выводить: <b>{flt.orders_count}</b>\n"
+        f"Интервал обновления: <b>{flt.refresh_interval_seconds} сек</b>"
     )
 
 
@@ -678,6 +679,60 @@ async def receive_count(
     await state.set_state(EditFilter.sort)
 
 
+@router.callback_query(F.data == "edit:input:interval", EditFilter.sort)
+async def input_interval(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+    data = await state.get_data()
+    text = (
+        "🔄 <b>Интервал обновления</b>\n\n"
+        "Как часто бот будет запрашивать ордера у Bybit (в секундах).\n"
+        "Введите целое число от 5 до 600 или нажмите Пропустить."
+    )
+    await bot.edit_message_text(
+        text, chat_id=callback.message.chat.id, message_id=data["msg_id"],
+        reply_markup=step_input_kb(),
+    )
+    await state.set_state(EditFilter.refresh_interval)
+    await callback.answer()
+
+
+@router.message(EditFilter.refresh_interval)
+async def receive_interval(
+    message: Message, bot: Bot, user: User, session: AsyncSession, state: FSMContext,
+) -> None:
+    chat_id = message.chat.id
+    raw = (message.text or "").strip()
+    try:
+        await bot.delete_message(chat_id, message.message_id)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        value = int(raw)
+        if not (5 <= value <= 600):
+            raise ValueError
+    except ValueError:
+        data = await state.get_data()
+        text = (
+            "🔄 <b>Интервал обновления</b>\n\n"
+            + ERROR_PREFIX.format(error="Целое число от 5 до 600")
+            + "или Пропустить."
+        )
+        await bot.edit_message_text(
+            text, chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
+        )
+        return
+    data = await state.get_data()
+    await FilterRepo(session).update(
+        data["filter_id"], user.id, refresh_interval_seconds=value
+    )
+    await session.commit()
+    flt = await _load_filter(session, user, state)
+    await bot.edit_message_text(
+        _build_sort_screen(flt), chat_id=chat_id, message_id=data["msg_id"],
+        reply_markup=sort_kb(flt.sort_direction),
+    )
+    await state.set_state(EditFilter.sort)
+
+
 # ─── Skip / Back (state-aware) ───────────────────────────────────────
 
 # Skip = "set this field to None for current step" (or "skip without change" for word lists).
@@ -745,7 +800,8 @@ async def skip_step(
         )
         await state.set_state(EditFilter.description)
 
-    elif current == EditFilter.orders_count.state:
+    elif current in (EditFilter.orders_count.state, EditFilter.refresh_interval.state):
+        # Skip = no change for these single-value inputs
         flt = await _load_filter(session, user, state)
         await bot.edit_message_text(_build_sort_screen(flt), chat_id=chat_id, message_id=msg_id, reply_markup=sort_kb(flt.sort_direction),
         )
@@ -788,7 +844,7 @@ async def back_step(
         await state.set_state(EditFilter.description)
 
     # Input inside sort → back to sort
-    elif current == EditFilter.orders_count.state:
+    elif current in (EditFilter.orders_count.state, EditFilter.refresh_interval.state):
         flt = await _load_filter(session, user, state)
         await bot.edit_message_text(_build_sort_screen(flt), chat_id=chat_id, message_id=msg_id, reply_markup=sort_kb(flt.sort_direction),
         )

@@ -84,6 +84,9 @@ class Filter(Base):
     orders_count: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, server_default="5"
     )
+    refresh_interval_seconds: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default="15"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -106,6 +109,10 @@ class Filter(Base):
         ),
         CheckConstraint(
             "sort_direction IN ('ASC', 'DESC')", name="ck_filters_sort_direction"
+        ),
+        CheckConstraint(
+            "refresh_interval_seconds BETWEEN 5 AND 600",
+            name="ck_filters_refresh_interval",
         ),
         Index("idx_filters_user_id", "user_id"),
     )

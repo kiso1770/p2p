@@ -4,6 +4,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 
 from services.tracking.buffer import RedisOrderBuffer
+from services.tracking.registry import EngineRegistry
 from services.tracking.state import RedisTrackingStateRepo
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ async def stop_tracking(
     chat_id: int,
     state_repo: RedisTrackingStateRepo,
     buffer: RedisOrderBuffer,
+    engine_registry: EngineRegistry | None = None,
 ) -> bool:
     """Best-effort cleanup of an active tracking session.
 
@@ -22,6 +24,10 @@ async def stop_tracking(
 
     NOTE: in Phase 6 this will also cancel the polling asyncio task.
     """
+    # First, cancel any running engine task so it does not race with us.
+    if engine_registry is not None:
+        await engine_registry.stop_for(chat_id)
+
     state = await state_repo.get(chat_id)
     if state is None:
         return False
