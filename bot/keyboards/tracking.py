@@ -11,9 +11,13 @@ def header_kb() -> InlineKeyboardMarkup:
     )
 
 
-def stopped_header_kb() -> InlineKeyboardMarkup:
+def stopped_header_kb(filter_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            [InlineKeyboardButton(
+                text="▶️ Возобновить",
+                callback_data=f"tracking:resume:{filter_id}",
+            )],
             [InlineKeyboardButton(text="← К фильтрам", callback_data="menu:filters")],
         ]
     )

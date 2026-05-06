@@ -51,7 +51,10 @@ async def _setup_user_and_filter(db_session, telegram_id: int = 100):
     return user, flt
 
 
-def _make_engine(bot, user, flt, redis_client, db_session, bybit_client):
+def _make_engine(
+    bot, user, flt, redis_client, db_session, bybit_client,
+    inactivity_timeout: float = 300.0,
+):
     engine = create_async_engine(TEST_DATABASE_URL)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     return TrackingEngine(
@@ -65,6 +68,7 @@ def _make_engine(bot, user, flt, redis_client, db_session, bybit_client):
         buffer=RedisOrderBuffer(redis_client),
         view_messages=ViewMessages(redis_client),
         registry=EngineRegistry(),
+        inactivity_timeout=inactivity_timeout,
     )
 
 
@@ -277,6 +281,112 @@ async def test_reject_ad_without_description_skips_blacklist(
     assert handled is True
     hashes = await BlacklistRepo(db_session).get_hashes_by_user(user.id)
     assert hashes == set()  # nothing blacklisted
+
+
+import asyncio
+
+
+async def test_inactivity_auto_stop_fires(db_session, redis_client, sample_ads):
+    user, flt = await _setup_user_and_filter(db_session)
+    bot = _fake_bot()
+    registry = EngineRegistry()
+    engine = _make_engine(
+        bot, user, flt, redis_client, db_session,
+        _fake_bybit_client(sample_ads),
+        inactivity_timeout=0.1,
+    )
+    engine._registry = registry
+    registry.register(user.telegram_id, engine)
+
+    await engine._send_initial_messages()
+    # Start the inactivity timer (start() does this; but _send_initial_messages
+    # alone doesn't, so we trigger it manually):
+    engine._reset_inactivity_timer()
+
+    # Wait for timer fire + spawned _stop_safely task (stop has internal
+    # MESSAGE_OP_DELAY pauses between message deletions, ~5 × 0.3s).
+    await asyncio.sleep(3.0)
+
+    assert engine._stop_reason == "timeout"
+    assert engine._stopping is True
+    assert registry.get(user.telegram_id) is None
+
+
+async def test_touch_activity_resets_timer(db_session, redis_client, sample_ads):
+    user, flt = await _setup_user_and_filter(db_session)
+    bot = _fake_bot()
+    registry = EngineRegistry()
+    engine = _make_engine(
+        bot, user, flt, redis_client, db_session,
+        _fake_bybit_client(sample_ads),
+        inactivity_timeout=0.2,
+    )
+    engine._registry = registry
+    registry.register(user.telegram_id, engine)
+
+    await engine._send_initial_messages()
+    engine._reset_inactivity_timer()
+
+    # Touch every 0.1s for 0.4s — total elapsed > timeout, but each touch resets
+    for _ in range(4):
+        await asyncio.sleep(0.1)
+        engine.touch_activity()
+
+    # Engine should still be alive — timeout never fired
+    assert engine._stopping is False
+    assert registry.get(user.telegram_id) is engine
+
+    await engine.stop()
+
+
+async def test_reject_resets_inactivity_timer(db_session, redis_client, sample_ads):
+    user, flt = await _setup_user_and_filter(db_session)
+    bot = _fake_bot()
+    engine = _make_engine(
+        bot, user, flt, redis_client, db_session,
+        _fake_bybit_client(sample_ads),
+        inactivity_timeout=300.0,
+    )
+    await engine._send_initial_messages()
+    engine._reset_inactivity_timer()
+    old_timer = engine._inactivity_task
+
+    first_msg_id = engine._order_message_ids[0]
+    await engine.reject_order(first_msg_id)
+    await db_session.commit()
+
+    assert engine._inactivity_task is not old_timer  # new timer task
+    await engine.stop()
+
+
+async def test_stop_reason_manual_uses_manual_text(db_session, redis_client, sample_ads):
+    user, flt = await _setup_user_and_filter(db_session)
+    bot = _fake_bot()
+    engine = _make_engine(bot, user, flt, redis_client, db_session,
+                          _fake_bybit_client(sample_ads))
+    await engine._send_initial_messages()
+    await engine.stop()
+
+    edit_calls = bot.edit_message_text.await_args_list
+    last_text = edit_calls[-1].args[0]
+    assert "автоматически" not in last_text
+    assert "остановлено" in last_text.lower()
+
+
+async def test_stopped_kb_includes_resume_with_filter_id(db_session, redis_client, sample_ads):
+    user, flt = await _setup_user_and_filter(db_session)
+    bot = _fake_bot()
+    engine = _make_engine(bot, user, flt, redis_client, db_session,
+                          _fake_bybit_client(sample_ads))
+    await engine._send_initial_messages()
+    await engine.stop()
+
+    last_call = bot.edit_message_text.await_args_list[-1]
+    kb = last_call.kwargs.get("reply_markup")
+    assert kb is not None
+    cb_data = [b.callback_data for row in kb.inline_keyboard for b in row]
+    assert any(d and d.startswith("tracking:resume:") for d in cb_data)
+    assert any(d == "menu:filters" for d in cb_data)
 
 
 async def test_stop_cleans_up(db_session, redis_client, sample_ads):

@@ -42,6 +42,7 @@ MESSAGE_OP_DELAY = 0.3           # seconds between Telegram API calls per chat
 BUFFER_SIZE = 15                 # total ads kept (5 displayed + 10 reserve)
 DISPLAYED_LIMIT = 5              # ads shown at once (US-7)
 API_PAGE_SIZE = 300              # Bybit max page size for /v5/p2p/item/online
+INACTIVITY_TIMEOUT = 300.0       # auto-stop after 5 minutes without "Не подходит" (US-12)
 
 
 def _format_header(
@@ -97,6 +98,7 @@ class TrackingEngine:
         buffer: RedisOrderBuffer,
         view_messages: "ViewMessages",
         registry: "EngineRegistry",
+        inactivity_timeout: float = INACTIVITY_TIMEOUT,
     ) -> None:
         self._bot = bot
         self._chat_id = chat_id
@@ -111,6 +113,9 @@ class TrackingEngine:
         self._registry = registry
 
         self._task: asyncio.Task | None = None
+        self._inactivity_task: asyncio.Task | None = None
+        self._inactivity_timeout = inactivity_timeout
+        self._stop_reason: str = "manual"  # set to "timeout" by inactivity timer
         self._stopping = False
         # Cache of the filter for header rendering, refreshed every cycle
         self._cached_filter: Filter = flt
@@ -128,16 +133,51 @@ class TrackingEngine:
     async def start(self) -> None:
         await self._send_initial_messages()
         self._task = asyncio.create_task(self._loop(), name=f"tracking:{self._chat_id}")
+        self._reset_inactivity_timer()
+
+    def touch_activity(self) -> None:
+        """Reset the inactivity timeout. Called by reject_order."""
+        self._reset_inactivity_timer()
+
+    def _reset_inactivity_timer(self) -> None:
+        if self._stopping:
+            return
+        old = self._inactivity_task
+        if old is not None and not old.done():
+            old.cancel()
+        self._inactivity_task = asyncio.create_task(
+            self._inactivity_runner(), name=f"inactivity:{self._chat_id}"
+        )
+
+    async def _inactivity_runner(self) -> None:
+        try:
+            await asyncio.sleep(self._inactivity_timeout)
+        except asyncio.CancelledError:
+            return
+        if self._stopping:
+            return
+        # Trigger stop in a separate task so we don't cancel ourselves.
+        self._stop_reason = "timeout"
+        asyncio.create_task(self._stop_safely(), name=f"autostop:{self._chat_id}")
+
+    async def _stop_safely(self) -> None:
+        try:
+            await self.stop()
+        except Exception:  # noqa: BLE001
+            logger.exception("Auto-stop failed for chat %s", self._chat_id)
 
     async def stop(self) -> None:
         if self._stopping:
             return
         self._stopping = True
 
-        if self._task is not None and not self._task.done():
-            self._task.cancel()
+        current = asyncio.current_task()
+        for task in (self._task, self._inactivity_task):
+            if task is None or task.done() or task is current:
+                continue
+            task.cancel()
             try:
-                await self._task
+                await task
             except (asyncio.CancelledError, Exception):  # noqa: BLE001
                 pass
 
@@ -150,12 +190,19 @@ class TrackingEngine:
 
         # Edit header into "stopped" state
         if self._header_message_id is not None:
+            if self._stop_reason == "timeout":
+                stopped_text = (
+                    "⏸ <b>Отслеживание остановлено автоматически</b>\n"
+                    "5 минут без активности."
+                )
+            else:
+                stopped_text = "⏹ <b>Отслеживание остановлено</b>"
             try:
                 await self._bot.edit_message_text(
-                    "⏹ <b>Отслеживание остановлено</b>",
+                    stopped_text,
                     chat_id=self._chat_id,
                     message_id=self._header_message_id,
-                    reply_markup=stopped_header_kb(),
+                    reply_markup=stopped_header_kb(self._filter_id),
                 )
             except TelegramBadRequest as exc:
                 logger.debug("stop: cannot edit header: %s", exc)
@@ -227,7 +274,10 @@ class TrackingEngine:
                     [self._header_message_id, *self._order_message_ids],
                 )
 
-            return True
+        # Reset inactivity timer outside of the lock to avoid awaiting
+        # cancellation/await chains while holding it.
+        self._reset_inactivity_timer()
+        return True
 
     # ─── loop ───────────────────────────────────────────────────────
 

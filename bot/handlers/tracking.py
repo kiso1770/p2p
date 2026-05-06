@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 router = Router(name=__name__)
 
 
-@router.callback_query(F.data.startswith("filter:start:"))
-async def start_tracking(
-    callback: CallbackQuery,
+async def _launch_engine(
+    *,
+    filter_id: int,
+    chat_id: int,
     bot: Bot,
     user: User,
     session: AsyncSession,
@@ -33,16 +34,14 @@ async def start_tracking(
     bybit_client: BybitClient,
     session_factory: async_sessionmaker,
     state: FSMContext,
-) -> None:
-    filter_id = int(callback.data.split(":")[2])
+) -> bool:
+    """Stop any previous tracking and start a fresh engine for `filter_id`.
+    Returns True on success, False if the filter doesn't belong to the user.
+    """
     flt = await FilterRepo(session).get_by_id(filter_id, user.id)
     if flt is None:
-        await callback.answer("Фильтр не найден", show_alert=True)
-        return
+        return False
 
-    chat_id = callback.message.chat.id
-
-    # Stop any previous tracking (cancel engine + delete its messages)
     await engine_registry.stop_for(chat_id)
     await stop_tracking(bot, chat_id, state_repo, buffer)
     await delete_current_view(bot, chat_id, view_messages)
@@ -62,7 +61,63 @@ async def start_tracking(
     )
     engine_registry.register(chat_id, engine)
     await engine.start()
+    return True
+
+
+@router.callback_query(F.data.startswith("filter:start:"))
+async def start_tracking(
+    callback: CallbackQuery,
+    bot: Bot,
+    user: User,
+    session: AsyncSession,
+    view_messages: ViewMessages,
+    state_repo: RedisTrackingStateRepo,
+    buffer: RedisOrderBuffer,
+    engine_registry: EngineRegistry,
+    bybit_client: BybitClient,
+    session_factory: async_sessionmaker,
+    state: FSMContext,
+) -> None:
+    filter_id = int(callback.data.split(":")[2])
+    chat_id = callback.message.chat.id
+    ok = await _launch_engine(
+        filter_id=filter_id, chat_id=chat_id, bot=bot, user=user, session=session,
+        view_messages=view_messages, state_repo=state_repo, buffer=buffer,
+        engine_registry=engine_registry, bybit_client=bybit_client,
+        session_factory=session_factory, state=state,
+    )
+    if not ok:
+        await callback.answer("Фильтр не найден", show_alert=True)
+        return
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("tracking:resume:"))
+async def resume_tracking(
+    callback: CallbackQuery,
+    bot: Bot,
+    user: User,
+    session: AsyncSession,
+    view_messages: ViewMessages,
+    state_repo: RedisTrackingStateRepo,
+    buffer: RedisOrderBuffer,
+    engine_registry: EngineRegistry,
+    bybit_client: BybitClient,
+    session_factory: async_sessionmaker,
+    state: FSMContext,
+) -> None:
+    filter_id = int(callback.data.split(":")[2])
+    chat_id = callback.message.chat.id
+    ok = await _launch_engine(
+        filter_id=filter_id, chat_id=chat_id, bot=bot, user=user, session=session,
+        view_messages=view_messages, state_repo=state_repo, buffer=buffer,
+        engine_registry=engine_registry, bybit_client=bybit_client,
+        session_factory=session_factory, state=state,
+    )
+    if not ok:
+        await callback.answer("Фильтр не найден", show_alert=True)
+        return
+    await callback.answer("Возобновлено")
 
 
 @router.callback_query(F.data == "tracking:stop")
