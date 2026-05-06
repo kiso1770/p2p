@@ -1,9 +1,9 @@
 import logging
 
-from aiogram import Bot, F, Router
+from aiogram import Bot, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message
 
 from bot.keyboards.main_menu import main_menu_kb
 from bot.views import ViewMessages, delete_current_view
@@ -54,6 +54,4 @@ async def handle_start(
     await view_messages.set(chat_id, [sent.message_id])
 
 
-@router.callback_query(F.data == "menu:settings")
-async def menu_settings_stub(callback: CallbackQuery) -> None:
-    await callback.answer("⚙️ Настройки — в разработке (Фаза 8)", show_alert=True)
+# menu:settings is handled by bot.handlers.settings router
