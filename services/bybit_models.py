@@ -19,8 +19,14 @@ class BybitAd(BaseModel):
         alias="lastQuantity",
         description="Currently available token amount",
     )
-    min_amount: Decimal = Field(alias="minAmount")
-    max_amount: Decimal = Field(alias="maxAmount")
+    min_amount: Decimal = Field(
+        alias="minAmount",
+        description="Min transaction amount in fiat (currencyId), per Bybit P2P API",
+    )
+    max_amount: Decimal = Field(
+        alias="maxAmount",
+        description="Max transaction amount in fiat (currencyId), per Bybit P2P API",
+    )
     remark: str | None = Field(default=None, description="Free-text description / terms")
     recent_order_num: int = Field(alias="recentOrderNum", default=0)
     recent_execute_rate: int = Field(

@@ -70,7 +70,7 @@ def format_filter(flt: Filter) -> str:
         f"📌 <b>{flt.name}</b>",
         f"{flag} {flt.token_id}/{flt.currency_id} • {side_text}",
         "",
-        f"💵 Сумма: {_fmt_range(flt.min_amount, flt.max_amount, ' USDT')}",
+        f"💵 Сумма в фиате ({flt.currency_id}): {_fmt_range(flt.min_amount, flt.max_amount)}",
         f"📊 Курс: {_fmt_range(flt.min_price, flt.max_price)}",
         f"👤 Сделок: ≥{flt.min_trades_count if flt.min_trades_count is not None else '—'}",
         f"⭐ Rate: ≥{_fmt_decimal(flt.min_completion_rate, '%') if flt.min_completion_rate is not None else '—'}",

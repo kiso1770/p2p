@@ -135,23 +135,29 @@ async def done_editing(
 
 def _build_step_amount_min(flt: Filter, error: str | None = None) -> str:
     prefix = ERROR_PREFIX.format(error=error) if error else ""
+    cur = flt.currency_id
     return (
         prefix
         + "💵 <b>Диапазон суммы сделки</b>\n\n"
-        + f"Текущее: {flt.min_amount or '—'} – {flt.max_amount or '—'} USDT\n\n"
-        + "Введите <b>минимальную</b> сумму (USDT, число) "
+        + f"<i>Суммы в фиате ({cur}), как у Bybit API (min/max amount).</i>\n\n"
+        + f"Текущее: {flt.min_amount or '—'} – {flt.max_amount or '—'} {cur}\n\n"
+        + f"Введите <b>минимальную</b> сумму ({cur}, число) "
         + "или нажмите Пропустить, чтобы убрать ограничение."
     )
 
 
-def _build_step_amount_max(pending_min: Decimal | None, error: str | None = None) -> str:
+def _build_step_amount_max(
+    currency_id: str,
+    pending_min: Decimal | None,
+    error: str | None = None,
+) -> str:
     prefix = ERROR_PREFIX.format(error=error) if error else ""
-    min_text = f"{pending_min} USDT" if pending_min is not None else "не задан"
+    min_text = f"{pending_min} {currency_id}" if pending_min is not None else "не задан"
     return (
         prefix
         + "💵 <b>Диапазон суммы сделки</b>\n\n"
         + f"Минимум: {min_text} ✅\n\n"
-        + "Введите <b>максимальную</b> сумму (USDT, число) "
+        + f"Введите <b>максимальную</b> сумму ({currency_id}, число) "
         + "или нажмите Пропустить, чтобы убрать ограничение."
     )
 
@@ -212,7 +218,10 @@ async def receive_amount_min(
 
     await state.update_data(pending_min=str(value))
     data = await state.get_data()
-    await bot.edit_message_text(_build_step_amount_max(value), chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
+    flt = await _load_filter(session, user, state)
+    await bot.edit_message_text(
+        _build_step_amount_max(flt.currency_id, value),
+        chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
     )
     await state.set_state(EditFilter.amount_max)
 
@@ -236,14 +245,20 @@ async def receive_amount_max(
     data = await state.get_data()
     pending_min_str = data.get("pending_min")
     pending_min = Decimal(pending_min_str) if pending_min_str else None
+    flt = await _load_filter(session, user, state)
+    cur = flt.currency_id
 
     if value is None:
-        await bot.edit_message_text(_build_step_amount_max(pending_min, "Введите положительное число"), chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
+        await bot.edit_message_text(
+            _build_step_amount_max(cur, pending_min, "Введите положительное число"),
+            chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
         )
         return
 
     if pending_min is not None and value < pending_min:
-        await bot.edit_message_text(_build_step_amount_max(pending_min, "Максимум должен быть ≥ минимума"), chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
+        await bot.edit_message_text(
+            _build_step_amount_max(cur, pending_min, "Максимум должен быть ≥ минимума"),
+            chat_id=chat_id, message_id=data["msg_id"], reply_markup=step_input_kb(),
         )
         return
 
@@ -757,7 +772,10 @@ async def skip_step(
     if current == EditFilter.amount_min.state:
         # Skip min → ask for max with min=None pending
         await state.update_data(pending_min=None)
-        await bot.edit_message_text(_build_step_amount_max(None), chat_id=chat_id, message_id=msg_id, reply_markup=step_input_kb(),
+        flt = await _load_filter(session, user, state)
+        await bot.edit_message_text(
+            _build_step_amount_max(flt.currency_id, None),
+            chat_id=chat_id, message_id=msg_id, reply_markup=step_input_kb(),
         )
         await state.set_state(EditFilter.amount_max)
 

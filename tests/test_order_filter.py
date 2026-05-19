@@ -17,7 +17,8 @@ def test_no_constraints_returns_all_sorted_asc(sample_ads, filter_factory):
     assert len(result) == len(sample_ads)
 
 
-def test_amount_range_overlap(sample_ads, filter_factory):
+def test_amount_range_overlap_fiat(sample_ads, filter_factory):
+    """Filter and API use fiat bounds (same currency as pair)."""
     flt = filter_factory(min_amount=Decimal("3000"), max_amount=Decimal("10000"))
     result = apply_filter(sample_ads, flt)
     for ad in result:
@@ -25,6 +26,20 @@ def test_amount_range_overlap(sample_ads, filter_factory):
         assert ad.max_amount >= flt.min_amount
     assert "a4" not in ids(result)
     assert "a5" not in ids(result)
+
+
+def test_amount_range_overlap_fiat_typical_rub_ad(filter_factory, ad_factory):
+    ads = [
+        ad_factory(
+            "rub1",
+            price="92.5",
+            min_amount="1850",
+            max_amount="111000",
+            remark="ok",
+        ),
+    ]
+    flt = filter_factory(min_amount=Decimal("2000"), max_amount=Decimal("100000"))
+    assert ids(apply_filter(ads, flt)) == ["rub1"]
 
 
 def test_price_range(sample_ads, filter_factory):

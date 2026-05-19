@@ -16,6 +16,7 @@ def _passes(ad: BybitAd, flt: Filter, blacklist_hashes: set[str]) -> bool:
     if has_description and hash_description(description) in blacklist_hashes:
         return False
 
+    # min/max amount: fiat in currency_id — same units as Bybit minAmount/maxAmount.
     if flt.min_amount is not None and ad.max_amount < Decimal(flt.min_amount):
         return False
     if flt.max_amount is not None and ad.min_amount > Decimal(flt.max_amount):
@@ -56,7 +57,8 @@ def apply_filter(
 
     Args:
         ads: raw ads from Bybit API.
-        flt: SQLAlchemy Filter model with user's conditions.
+        flt: SQLAlchemy Filter model; min_amount/max_amount are fiat (flt.currency_id),
+            matching Bybit's minAmount/maxAmount.
         blacklist_hashes: set of sha256 hashes of descriptions the user has hidden.
         limit: buffer size; defaults to 15 — what the tracking engine pre-loads.
 

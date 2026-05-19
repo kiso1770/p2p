@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -74,7 +73,7 @@ def _format_order(ad: BybitAd) -> str:
     lines = [
         f"<b>{ad.price} {ad.currency_id}/USDT</b>",
         f"👤 {ad.nick_name} ⭐ {ad.recent_execute_rate}% ({ad.recent_order_num} сд.)",
-        f"💰 {ad.min_amount} – {ad.max_amount} USDT",
+        f"💰 {ad.min_amount} – {ad.max_amount} {ad.currency_id}",
     ]
     remark = (ad.remark or "").strip()
     if remark:

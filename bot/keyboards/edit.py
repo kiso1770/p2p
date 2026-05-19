@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 def main_editor_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💵 Диапазон суммы", callback_data="edit:group:amount")],
+            [InlineKeyboardButton(text="💵 Диапазон суммы (фиат)", callback_data="edit:group:amount")],
             [InlineKeyboardButton(text="📊 Диапазон курса", callback_data="edit:group:price")],
             [InlineKeyboardButton(text="👤 Опыт и репутация", callback_data="edit:group:experience")],
             [InlineKeyboardButton(text="📝 Описание и слова", callback_data="edit:group:description")],

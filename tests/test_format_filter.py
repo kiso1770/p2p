@@ -31,6 +31,7 @@ def _flt(**overrides):
 def test_integer_amounts_render_correctly():
     text = format_filter(_flt(min_amount=Decimal("10"), max_amount=Decimal("100")))
     assert "10 – 100" in text
+    assert "Сумма в фиате (RUB)" in text
     assert "1 – 1" not in text
 
 
@@ -46,7 +47,7 @@ def test_decimal_amounts_strip_trailing_zeros_only_after_dot():
 
 def test_unset_amounts_show_dash():
     text = format_filter(_flt())
-    assert "Сумма: —" in text
+    assert "Сумма в фиате (RUB): —" in text
     assert "Курс: —" in text
 
 

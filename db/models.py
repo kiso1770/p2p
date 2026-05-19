@@ -65,6 +65,7 @@ class Filter(Base):
     currency_id: Mapped[str] = mapped_column(String(16), nullable=False)
     side: Mapped[int] = mapped_column(SmallInteger, nullable=False)
 
+    # Fiat bounds (currency_id); matches Bybit P2P minAmount/maxAmount.
     min_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     max_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     min_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
