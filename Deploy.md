@@ -87,6 +87,18 @@ docker compose ps
 
 Все три сервиса (`postgres`, `redis`, `bot`) должны быть в статусе `running` / `healthy`.
 
+### DNS и Docker (`Name or service not known`, нет доступа к api.bybit.com)
+
+Если в шапке отслеживания видно ошибку про **DNS** или **нет доступа к серверу Bybit**, проверь по шагам:
+
+1. **С хоста** (не из контейнера): `curl -sS https://api.bybit.com/v5/market/time` — должен вернуться JSON. Если уже здесь ошибка резолва — почини интернет/DNS на машине или **WSL** (`/etc/resolv.conf`, VPN).
+2. **Из контейнера бота**:  
+   `docker compose exec bot python -c "import socket; print(socket.getaddrinfo('api.bybit.com', 443))"`  
+   Если здесь ошибка — проверь блок `dns:` у сервиса `bot` в `docker-compose.yml` (по умолчанию `8.8.8.8`, `8.8.4.4`). При блокировке Google DNS у провайдера замени их на разрешённые резолверы или временно убери блок `dns:` и настрой DNS в Docker Daemon.
+3. **Прокси**: у `httpx` по умолчанию учитываются переменные окружения `HTTP_PROXY` / `HTTPS_PROXY`. При необходимости добавь их в `.env` (и пробрось в compose при желании).
+
+Убедись, что в `.env` указано `BYBIT_BASE_URL=https://api.bybit.com` без опечаток.
+
 ### Применение миграций БД
 
 ```bash

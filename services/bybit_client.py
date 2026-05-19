@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -15,6 +16,9 @@ ONLINE_ADS_PATH = "/v5/p2p/item/online"
 SERVER_TIME_PATH = "/v5/market/time"
 DEFAULT_RECV_WINDOW = 5000
 DEFAULT_TIMEOUT = 10.0
+# Transient DNS / TCP failures (common with Docker-on-WSL resolvers).
+CONNECT_RETRIES = 3
+CONNECT_RETRY_BASE_DELAY_S = 0.4
 
 
 class BybitError(Exception):
@@ -92,7 +96,16 @@ class BybitClient:
     async def _sync_server_time(self) -> None:
         """Compute the offset between local clock and Bybit server clock."""
         try:
-            response = await self._client.get(SERVER_TIME_PATH)
+            response = None
+            for attempt in range(CONNECT_RETRIES):
+                try:
+                    response = await self._client.get(SERVER_TIME_PATH)
+                    break
+                except httpx.ConnectError:
+                    if attempt + 1 >= CONNECT_RETRIES:
+                        raise
+                    await asyncio.sleep(CONNECT_RETRY_BASE_DELAY_S * (attempt + 1))
+            assert response is not None
             data = response.json()
             server_ms = int(data["result"]["timeNano"]) // 1_000_000
             local_ms = int(time.time() * 1000)
@@ -120,12 +133,33 @@ class BybitClient:
         body_str = json.dumps(body, separators=(",", ":"))
         headers = await self._headers(body_str)
 
-        try:
-            response = await self._client.post(path, content=body_str, headers=headers)
-        except httpx.TimeoutException as exc:
-            raise BybitTimeoutError(f"Request to {path} timed out") from exc
-        except httpx.HTTPError as exc:
-            raise BybitError(f"HTTP error: {exc}") from exc
+        response: httpx.Response | None = None
+        for attempt in range(CONNECT_RETRIES):
+            try:
+                response = await self._client.post(path, content=body_str, headers=headers)
+                break
+            except httpx.TimeoutException as exc:
+                raise BybitTimeoutError(f"Request to {path} timed out") from exc
+            except httpx.ConnectError as exc:
+                if attempt + 1 >= CONNECT_RETRIES:
+                    raise BybitError(
+                        "нет доступа к серверу Bybit (DNS или сеть). "
+                        "Проверьте BYBIT_BASE_URL, интернет и DNS; "
+                        "в Docker см. раздел «DNS и Docker» в Deploy.md."
+                    ) from exc
+                delay = CONNECT_RETRY_BASE_DELAY_S * (attempt + 1)
+                logger.warning(
+                    "Bybit connect failed (attempt %s/%s), retry in %.1fs: %s",
+                    attempt + 1,
+                    CONNECT_RETRIES,
+                    delay,
+                    exc,
+                )
+                await asyncio.sleep(delay)
+            except httpx.HTTPError as exc:
+                raise BybitError(f"HTTP error: {exc}") from exc
+
+        assert response is not None
 
         if response.status_code == 401:
             raise BybitAuthError(f"Authentication failed: {response.text}")

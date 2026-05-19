@@ -28,6 +28,11 @@ services:
 
   bot:
     build: .
+    # Docker Desktop / WSL often forwards a broken corporate resolver into the
+    # container; explicit DNS avoids "Name or service not known" for api.bybit.com.
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     env_file: .env
     depends_on:
       postgres:
