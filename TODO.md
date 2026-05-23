@@ -145,9 +145,9 @@
 
 ### Поведение ссылки "💚 Купить →"
 
-**Текущее состояние**: URL ведёт на `https://www.bybit.com/en-US/p2p/{buy|sell}/{token}/{currency}?adNo={ad_id}` — открывается список ордеров в приложении Bybit / браузере, но **не на конкретный ордер**.
+**Текущее состояние**: целевой веб-URL — `https://www.bybit.com/en/p2p/{buy|sell}/{token}/{currency}?itemId={ad_id}&adNo={ad_id}`, обёрнутый в `app.bybit.com/inapp` + deep link. Параметр `itemId` соответствует полю `id` в API; раньше только `adNo` часто открывал список в WebView.
 
-**Причина**: Bybit deep-link на конкретный ордер требует `share_id` (32-char hex), который генерируется только при шаринге ордера из приложения и не возвращается публичным API.
+**Ограничения**: часть клиентов Bybit/Telegram всё равно может показать список или упасть в общий P2P-экран. Для гарантированного открытия конкретной карточки у Bybit может требоваться short-lived `share_id` из in-app «Поделиться», которого нет в публичном API.
 
 **Дополнительные ограничения**:
 - Telegram in-app WebView не триггерит Universal Links / App Links — нужен external browser

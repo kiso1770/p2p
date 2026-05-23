@@ -62,7 +62,7 @@ def _fmt_words(words: list[str] | None) -> str:
 
 def format_filter(flt: Filter) -> str:
     flag = currency_flag(flt.currency_id)
-    side_text = "📈 Покупка" if flt.side == 0 else "📉 Продажа"
+    side_text = "📉 Продажа" if flt.side == 0 else "📈 Покупка"
     sort_arrow = "↑" if flt.sort_direction == "ASC" else "↓"
     show_no_desc = "показывать" if flt.show_no_description else "скрывать"
 

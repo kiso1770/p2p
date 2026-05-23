@@ -13,7 +13,10 @@ class BybitAd(BaseModel):
     nick_name: str = Field(alias="nickName", default="")
     token_id: str = Field(alias="tokenId")
     currency_id: str = Field(alias="currencyId")
-    side: int = Field(description="0 = buy USDT, 1 = sell USDT")
+    side: int = Field(
+        description="Advertiser's side: 0 = advertiser buys USDT (user sells), "
+        "1 = advertiser sells USDT (user buys)",
+    )
     price: Decimal
     last_quantity: Decimal = Field(
         alias="lastQuantity",

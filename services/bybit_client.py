@@ -185,7 +185,8 @@ class BybitClient:
         """Fetch the current order book for a (token, currency, side) combination.
 
         Args:
-            side: 0 for buy USDT, 1 for sell USDT (Bybit convention).
+            side: advertiser's side — 0 = advertiser buys USDT (user sells),
+                1 = advertiser sells USDT (user buys).
             size: page size, max 300 per Bybit docs.
         """
         body = {

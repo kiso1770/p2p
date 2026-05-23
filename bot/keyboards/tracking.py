@@ -24,6 +24,8 @@ def stopped_header_kb(filter_id: int) -> InlineKeyboardMarkup:
 
 
 def order_kb(ad_id: str, token_id: str, currency_id: str, side: int) -> InlineKeyboardMarkup:
+    # side is advertiser's: 0 = they buy (user sells), 1 = they sell (user buys)
+    action_text = "💚 Купить →" if side == 1 else "💚 Продать →"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -32,7 +34,7 @@ def order_kb(ad_id: str, token_id: str, currency_id: str, side: int) -> InlineKe
                     callback_data=f"order:reject:{ad_id}",
                 ),
                 InlineKeyboardButton(
-                    text="💚 Купить →",
+                    text=action_text,
                     url=build_order_url(ad_id, token_id, currency_id, side),
                 ),
             ]

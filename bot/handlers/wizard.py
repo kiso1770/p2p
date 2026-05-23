@@ -40,7 +40,7 @@ ERROR_PREFIX = "⚠️ <b>{error}</b>\n\n"
 
 
 def _side_text(side: int) -> str:
-    return "📈 Покупка" if side == 0 else "📉 Продажа"
+    return "📉 Продажа" if side == 0 else "📈 Покупка"
 
 
 def _build_step_side(currency_id: str) -> str:
@@ -201,12 +201,17 @@ async def receive_name(
             logger.warning("Failed to edit wizard message: %s", exc)
         return
 
-    # Success — create the filter, then redirect to the parameters editor
+    # Success — create the filter, then redirect to the parameters editor.
+    # side=0 (advertiser buys, user sells) → user wants best price first → DESC
+    # side=1 (advertiser sells, user buys) → user wants cheapest first → ASC
+    side = data["side"]
+    default_sort = "DESC" if side == 0 else "ASC"
     flt = await FilterRepo(session).create(
         user_id=user.id,
         name=name,
         currency_id=data["currency_id"],
-        side=data["side"],
+        side=side,
+        sort_direction=default_sort,
     )
     await session.commit()
     await state.clear()

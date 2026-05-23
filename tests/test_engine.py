@@ -75,23 +75,42 @@ def _make_engine(
 # ─── Tests ───────────────────────────────────────────────────────────
 
 
-def test_url_builder_uses_inapp_redirect():
-    url = build_order_url("123", "USDT", "RUB", 0)
+def test_url_builder_inapp_wraps_web_url():
+    url = build_order_url("123", "USDT", "RUB", 0, link_mode="inapp")
     assert url.startswith("https://app.bybit.com/inapp")
     assert "by_dp=" in url
     assert "by_web_link=" in url
     assert "bybitapp" in url
 
 
-def test_url_builder_buy_path_encoded():
-    url = build_order_url("123", "USDT", "RUB", 0)
-    assert "p2p%2Fbuy%2FUSDT%2FRUB" in url
+def test_url_builder_direct_sell_url_for_side0():
+    # side=0 = advertiser buys USDT → user sells → URL action = "sell"
+    url = build_order_url(
+        "123", "USDT", "RUB", 0,
+        link_mode="direct",
+        web_host="www.bybit.com",
+        web_locale="en-US",
+    )
+    assert url.startswith("https://www.bybit.com/en-US/p2p/sell/USDT/RUB?")
+    assert "itemId=123" in url
+    assert "adNo=123" in url
+
+
+def test_url_builder_inapp_sell_query_encoded_for_side0():
+    url = build_order_url("123", "USDT", "RUB", 0, link_mode="inapp")
+    assert "p2p%2Fsell%2FUSDT%2FRUB" in url
+    assert "itemId%3D123" in url
     assert "adNo%3D123" in url
 
 
-def test_url_builder_sell_path_encoded():
-    url = build_order_url("123", "USDT", "RUB", 1)
-    assert "p2p%2Fsell%2FUSDT%2FRUB" in url
+def test_url_builder_buy_path_for_side1():
+    # side=1 = advertiser sells USDT → user buys → URL action = "buy"
+    url = build_order_url(
+        "123", "USDT", "RUB", 1,
+        link_mode="direct",
+        web_locale="en-US",
+    )
+    assert "/p2p/buy/USDT/RUB" in url
 
 
 async def test_send_initial_messages_with_ads(db_session, redis_client, sample_ads):

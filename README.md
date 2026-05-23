@@ -40,4 +40,5 @@ p2p/
 ## Документация проекта
 
 - [Deploy.md](Deploy.md) — установка и запуск
+- [docs/bybit-p2p-links.md](docs/bybit-p2p-links.md) — Bybit P2P API, шаринг и ограничения ссылок в приложение
 - [UserStories.md](UserStories.md) — пользовательские сценарии

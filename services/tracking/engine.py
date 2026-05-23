@@ -53,7 +53,7 @@ def _format_header(
         else "⚠️ Отслеживание активно (с ошибкой)"
     )
     flag = currency_flag(flt.currency_id)
-    side_text = "📈 Покупка" if flt.side == 0 else "📉 Продажа"
+    side_text = "📉 Продажа" if flt.side == 0 else "📈 Покупка"
     now = datetime.now().strftime("%H:%M:%S")
     lines = [
         f"<b>{title_status}</b>",

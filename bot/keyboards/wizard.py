@@ -51,11 +51,11 @@ def side_picker_kb(currency_id: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(
                 text=f"📈 Покупка USDT за {currency_id}",
-                callback_data="wiz:side:0",
+                callback_data="wiz:side:1",
             )],
             [InlineKeyboardButton(
                 text=f"📉 Продажа USDT за {currency_id}",
-                callback_data="wiz:side:1",
+                callback_data="wiz:side:0",
             )],
             [
                 InlineKeyboardButton(text="← Назад", callback_data="wiz:back"),
